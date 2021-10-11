@@ -20,7 +20,8 @@ export function getDefaultNetworkName() {
 }
 
 export function getSupportedNetworks(): Network[] {
-  const supportedNetworks = getParamOrFail('REACT_APP_SUPPORTED_ETHEREUM_NETWORKS').split(
+  //const supportedNetworks = getParamOrFail('REACT_APP_SUPPORTED_ETHEREUM_NETWORKS').split(
+  const supportedNetworks = "mainnet".split(// shwan: TODO
     ','
   ) as Network[];
 
