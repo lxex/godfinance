@@ -21,12 +21,14 @@ import messages from './messages';
 
 import { BorrowTableItem } from '../../components/BorrowAssetTable/types';
 import { isAssetStable } from '../../../../helpers/markets/assets';
+import { useIncentivesDataContext } from '../../../../libs/pool-data-provider/hooks/use-incentives-data-context';
 import PermissionWarning from '../../../../ui-config/branding/PermissionWarning';
 
 export default function BorrowMain() {
   const intl = useIntl();
   const { marketRefPriceInUsd } = useStaticPoolDataContext();
   const { reserves, user } = useDynamicPoolDataContext();
+  const { reserveIncentives } = useIncentivesDataContext();
   const { sm } = useThemeContext();
 
   const [searchValue, setSearchValue] = useState('');
@@ -61,7 +63,7 @@ export default function BorrowMain() {
           .multipliedBy(reserve.price.priceInEth)
           .dividedBy(marketRefPriceInUsd)
           .toString();
-
+        const reserveIncentiveData = reserveIncentives[reserve.underlyingAsset.toLowerCase()];
         return {
           ...reserve,
           currentBorrows:
@@ -74,14 +76,20 @@ export default function BorrowMain() {
           availableBorrowsInUSD,
           stableBorrowRate:
             reserve.stableBorrowRateEnabled && reserve.borrowingEnabled
-              ? Number(reserve.stableBorrowRate)
+              ? Number(reserve.stableBorrowAPY)
               : -1,
-          variableBorrowRate: reserve.borrowingEnabled ? Number(reserve.variableBorrowRate) : -1,
+          variableBorrowRate: reserve.borrowingEnabled ? Number(reserve.variableBorrowAPY) : -1,
           avg30DaysVariableRate: Number(reserve.avg30DaysVariableBorrowRate),
           interestHistory: [],
-          aIncentivesAPY: reserve.aIncentivesAPY,
-          vIncentivesAPY: reserve.vIncentivesAPY,
-          sIncentivesAPY: reserve.sIncentivesAPY,
+          aincentivesAPR: reserveIncentiveData
+            ? reserveIncentiveData.aIncentives.incentiveAPR
+            : '0',
+          vincentivesAPR: reserveIncentiveData
+            ? reserveIncentiveData.vIncentives.incentiveAPR
+            : '0',
+          sincentivesAPR: reserveIncentiveData
+            ? reserveIncentiveData.sIncentives.incentiveAPR
+            : '0',
         };
       });
 

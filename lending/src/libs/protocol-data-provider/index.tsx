@@ -17,7 +17,6 @@ export interface ProtocolContextData {
   currentMarket: CustomMarket;
   setCurrentMarket: (market: CustomMarket) => void;
   currentMarketData: MarketDataType;
-  isTestnet: boolean;
   // currently selected one
   chainId: number;
   network: Network;
@@ -27,14 +26,20 @@ export interface ProtocolContextData {
 
 const PoolDataContext = React.createContext({} as ProtocolContextData);
 
+/**
+ * @returns the last accessed market if it's still available, the first market if not.
+ */
+const getInitialMarket = () => {
+  const cachedMarket = localStorage.getItem(LS_KEY) as CustomMarket | undefined;
+  if (cachedMarket && availableMarkets.includes(cachedMarket)) return cachedMarket;
+  return availableMarkets[0];
+};
+
 export function ProtocolDataProvider({ children }: PropsWithChildren<{}>) {
-  const [currentMarket, setCurrentMarket] = useState<CustomMarket>(
-    (localStorage.getItem(LS_KEY) as CustomMarket | undefined) || availableMarkets[0]
-  );
+  const [currentMarket, setCurrentMarket] = useState<CustomMarket>(getInitialMarket());
 
   const currentMarketData = marketsData[currentMarket];
   const network = currentMarketData.network;
-  const isTestnet = ![Network.mainnet, Network.polygon, Network.avalanche].includes(network);
 
   const handleSetMarket = (market: CustomMarket) => {
     localStorage.setItem(LS_KEY, market);
@@ -44,7 +49,6 @@ export function ProtocolDataProvider({ children }: PropsWithChildren<{}>) {
   return (
     <PoolDataContext.Provider
       value={{
-        isTestnet,
         network,
         currentMarket,
         chainId: mapNameToChainID(marketsData[currentMarket].network),

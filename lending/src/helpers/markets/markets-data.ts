@@ -25,21 +25,26 @@ const linkBuilder =
 export type NetworkConfig = {
   privateJsonRPCUrl?: string; // private rpc will be used for rpc queries inside the client. normally has private api key and better rate
   privateJsonRPCWSUrl?: string;
-  publicJsonRPCUrl: string; // public rpc used if not private found, and used to add specific network to wallets if user don't have them. Normally with slow rates
+  publicJsonRPCUrl: readonly string[]; // public rpc used if not private found, and used to add specific network to wallets if user don't have them. Normally with slow rates
   publicJsonRPCWSUrl?: string;
-  walletBalanceProvider: string;
-  /**
-   * UiPoolDataProvider currently requires a non-master version
-   * https://github.com/aave/protocol-v2/blob/feat/split-ui-dataprovider-logic/contracts/misc/UiPoolDataProvider.sol
-   * If you deploy a market with the non default oracle or incentive controller you have to redeploy the UiPoolDataProvider as well as currently the addresses are static.
-   * In the upcoming version this will no longer be needed.
-   */
-  uiPoolDataProvider: string;
+  addresses: {
+    walletBalanceProvider: string;
+    /**
+     * UiPoolDataProvider currently requires a non-master version
+     * https://github.com/aave/protocol-v2/blob/feat/split-ui-dataprovider-logic/contracts/misc/UiPoolDataProvider.sol
+     * If you deploy a market with the non default oracle or incentive controller you have to redeploy the UiPoolDataProvider as well as currently the addresses are static.
+     * In the upcoming version this will no longer be needed.
+     */
+    uiPoolDataProvider: string;
+    uiIncentiveDataProvider: string;
+    chainlinkFeedRegistry?: string;
+  };
   protocolDataUrl: string;
   cachingServerUrl?: string;
   cachingWSServerUrl?: string;
   baseUniswapAdapter?: string;
   baseAsset: string;
+  baseAssetWrappedAddress?: string;
   rewardTokenSymbol: string;
   rewardTokenAddress: string;
   rewardTokenDecimals: number;
@@ -49,10 +54,8 @@ export type NetworkConfig = {
   explorerLink: string;
   explorerLinkBuilder: (props: ExplorerLinkBuilderProps) => string;
   rpcOnly: boolean;
-  addresses?: {
-    INCENTIVES_CONTROLLER: string;
-    INCENTIVES_CONTROLLER_REWARD_TOKEN: string;
-  };
+  // set this to show faucets and similar
+  isTestnet?: boolean;
   bridge?: {
     brandColor: string;
     name: string;
@@ -85,7 +88,6 @@ export type MarketDataType = {
     LENDING_POOL_ADDRESS_PROVIDER: string;
     LENDING_POOL: string;
     WETH_GATEWAY?: string;
-    FLASH_LIQUIDATION_ADAPTER?: string;
     SWAP_COLLATERAL_ADAPTER?: string;
     REPAY_WITH_COLLATERAL_ADAPTER?: string;
     FAUCET?: string;
@@ -115,11 +117,22 @@ const providers: { [network: string]: ethers.providers.Provider } = {};
 export const getProvider = (network: Network): ethers.providers.Provider => {
   if (!providers[network]) {
     const config = getNetworkConfig(network);
-    const jsonRPCUrl = config.privateJsonRPCUrl || config.publicJsonRPCUrl;
-    if (!jsonRPCUrl) {
+    const chainProviders: ethers.providers.StaticJsonRpcProvider[] = [];
+    if (config.privateJsonRPCUrl)
+      chainProviders.push(new ethers.providers.StaticJsonRpcProvider(config.privateJsonRPCUrl));
+    if (config.publicJsonRPCUrl.length) {
+      config.publicJsonRPCUrl.map((rpc) =>
+        chainProviders.push(new ethers.providers.StaticJsonRpcProvider(rpc))
+      );
+    }
+    if (!chainProviders.length) {
       throw new Error(`${network} has no jsonRPCUrl configured`);
     }
-    providers[network] = new ethers.providers.StaticJsonRpcProvider(jsonRPCUrl);
+    if (chainProviders.length === 1) {
+      providers[network] = chainProviders[0];
+    } else {
+      providers[network] = new ethers.providers.FallbackProvider(chainProviders);
+    }
   }
   return providers[network];
 };
