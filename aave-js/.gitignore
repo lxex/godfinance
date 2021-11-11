@@ -1,0 +1,12 @@
+*.log
+.DS_Store
+node_modules
+dist
+.idea
+.DS_Store
+.vscode
+.graphqlconfig
+schema.graphql
+artifacts
+cache
+package-lock.json
